@@ -1,0 +1,84 @@
+# App replicas (gRPC + HTTP health/metrics).
+replicaCount: 3
+
+image:
+  repository: usdt-rates
+  tag: latest
+  pullPolicy: IfNotPresent
+  # Minikube: `eval $(minikube docker-env) && docker build -t usdt-rates:latest .` then set pullPolicy: Never
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Override Postgres hostname if not using default Bitnami service name (<release>-postgresql).
+postgresHostOverride: ""
+
+service:
+  type: NodePort
+  grpcPort: 50051
+  httpPort: 8080
+  grpcNodePort: 30551
+  httpNodePort: 30080
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# soft = prefer spreading pods across nodes when possible
+podAntiAffinityPreset: soft
+
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+migrations:
+  enabled: true
+  gooseImage: golang:1.25-alpine
+
+# Bitnami PostgreSQL: one primary instance by default (no read replicas).
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: postgres
+    database: usdt_rates
+  primary:
+    persistence:
+      enabled: true
+      size: 2Gi
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 250m
+      limits:
+        memory: 512Mi
+        cpu: "1"
+
+# When postgresql.enabled is false, set full connection string (e.g. managed DB).
+externalPostgresURL: ""
+
+app:
+  grpcAddr: ":50051"
+  healthHTTPAddr: ":8080"
+  migrationsPath: /tmp/migrations_unused
+  grinexDepthURL: "https://grinex.io/api/v1/spot/depth?symbol=usdta7a5"
+  grinexMaxConcurrent: "4"
+  grinexCBEnabled: "true"
+  grinexCBConsecutiveFailures: "5"
+  grinexCBOpenTimeout: 30s
+  grinexCBHalfOpenMax: "3"
+  grinexCBInterval: "0s"
+  httpClientTimeout: 15s
+  shutdownTimeout: 10s
+  otelCollectorURL: ""
+  calcTopN: "1"
+  calcAvgN: "1"
+  calcAvgM: "5"
+  logLevel: info
+  logFormat: json
+  logDisableStacktrace: "true"

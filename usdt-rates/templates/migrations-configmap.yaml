@@ -1,0 +1,14 @@
+{{- if .Values.migrations.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "usdt-rates.fullname" . }}-migrations
+  labels:
+    {{- include "usdt-rates.labels" . | nindent 4 }}
+binaryData: {}
+data:
+{{- range $path, $content := .Files.Glob "migrations/*.sql" }}
+  {{ base $path }}: |
+{{ $content | nindent 4 }}
+{{- end }}
+{{- end }}

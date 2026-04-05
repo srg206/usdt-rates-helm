@@ -1,0 +1,11 @@
+apiVersion: v2
+name: usdt-rates
+description: USDT rates gRPC API with optional in-cluster PostgreSQL (single primary).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: postgresql
+    condition: postgresql.enabled
+    version: 15.5.32
+    repository: https://charts.bitnami.com/bitnami

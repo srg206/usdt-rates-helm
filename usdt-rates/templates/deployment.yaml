@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "usdt-rates.fullname" . }}
+  labels:
+    {{- include "usdt-rates.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "usdt-rates.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "usdt-rates.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if eq .Values.podAntiAffinityPreset "soft" }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "usdt-rates.selectorLabels" . | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: GRPC_ADDR
+              value: {{ .Values.app.grpcAddr | quote }}
+            - name: HEALTH_HTTP_ADDR
+              value: {{ .Values.app.healthHTTPAddr | quote }}
+            - name: POSTGRES_URL
+              value: {{ include "usdt-rates.postgresURL" . | quote }}
+            - name: MIGRATIONS_PATH
+              value: {{ .Values.app.migrationsPath | quote }}
+            - name: GRINEX_DEPTH_URL
+              value: {{ .Values.app.grinexDepthURL | quote }}
+            - name: GRINEX_MAX_CONCURRENT
+              value: {{ .Values.app.grinexMaxConcurrent | quote }}
+            - name: GRINEX_CB_ENABLED
+              value: {{ .Values.app.grinexCBEnabled | quote }}
+            - name: GRINEX_CB_CONSECUTIVE_FAILURES
+              value: {{ .Values.app.grinexCBConsecutiveFailures | quote }}
+            - name: GRINEX_CB_OPEN_TIMEOUT
+              value: {{ .Values.app.grinexCBOpenTimeout | quote }}
+            - name: GRINEX_CB_HALF_OPEN_MAX
+              value: {{ .Values.app.grinexCBHalfOpenMax | quote }}
+            - name: GRINEX_CB_INTERVAL
+              value: {{ .Values.app.grinexCBInterval | quote }}
+            - name: HTTP_CLIENT_TIMEOUT
+              value: {{ .Values.app.httpClientTimeout | quote }}
+            - name: SHUTDOWN_TIMEOUT
+              value: {{ .Values.app.shutdownTimeout | quote }}
+            - name: OTEL_COLLECTOR_URL
+              value: {{ .Values.app.otelCollectorURL | quote }}
+            - name: CALC_TOP_N
+              value: {{ .Values.app.calcTopN | quote }}
+            - name: CALC_AVG_N
+              value: {{ .Values.app.calcAvgN | quote }}
+            - name: CALC_AVG_M
+              value: {{ .Values.app.calcAvgM | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.app.logLevel | quote }}
+            - name: LOG_FORMAT
+              value: {{ .Values.app.logFormat | quote }}
+            - name: LOG_DISABLE_STACKTRACE
+              value: {{ .Values.app.logDisableStacktrace | quote }}
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 20
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

@@ -1,0 +1,11 @@
+1. Check pods:
+   kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+2. gRPC / HTTP (NodePort on minikube):
+   minikube service {{ include "usdt-rates.fullname" . }} --url
+   # or
+   kubectl port-forward svc/{{ include "usdt-rates.fullname" . }} 50051:50051 8080:8080
+
+3. PostgreSQL (in-cluster, single primary): kubectl get pods | grep postgresql
+
+4. App replicas: {{ .Values.replicaCount }}

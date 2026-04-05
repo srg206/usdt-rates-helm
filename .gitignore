@@ -1,0 +1,6 @@
+# Helm packaged dependencies
+usdt-rates/charts/*.tgz
+
+.DS_Store
+usdt-rates/prod-values.yaml
+usdt-rates/secrets.yaml

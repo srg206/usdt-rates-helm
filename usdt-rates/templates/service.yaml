@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "usdt-rates.fullname" . }}
+  labels:
+    {{- include "usdt-rates.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "usdt-rates.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: grpc
+      port: {{ .Values.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.grpcNodePort }}
+      nodePort: {{ .Values.service.grpcNodePort }}
+      {{- end }}
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.httpNodePort }}
+      nodePort: {{ .Values.service.httpNodePort }}
+      {{- end }}

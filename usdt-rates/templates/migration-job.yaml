@@ -1,0 +1,59 @@
+{{- if and .Values.migrations.enabled (or .Values.postgresql.enabled .Values.externalPostgresURL) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "usdt-rates.fullname" . }}-migrate-{{ .Release.Revision }}
+  labels:
+    {{- include "usdt-rates.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "usdt-rates.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      {{- if .Values.postgresql.enabled }}
+      initContainers:
+        - name: wait-postgres
+          image: postgres:16-alpine
+          env:
+            - name: PGHOST
+              value: {{ include "usdt-rates.postgresqlHost" . | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              for i in $(seq 1 90); do
+                pg_isready -h "$PGHOST" -p 5432 && exit 0
+                sleep 2
+              done
+              exit 1
+      {{- end }}
+      containers:
+        - name: goose
+          image: {{ .Values.migrations.gooseImage | quote }}
+          env:
+            - name: POSTGRES_URL
+              value: {{ include "usdt-rates.postgresURL" . | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache git ca-certificates >/dev/null
+              go run github.com/pressly/goose/v3/cmd/goose@v3.24.1 -dir /migrations postgres "$POSTGRES_URL" up
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: {{ include "usdt-rates.fullname" . }}-migrations
+{{- end }}
